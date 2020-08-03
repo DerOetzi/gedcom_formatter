@@ -1,10 +1,12 @@
+from parser.parsers import parseId
+
 class RawElement():
     def __init__(self, level, pointer, tag, value):
         self.__children = []
         self.__parent = None
 
         self.__level = level
-        self.__pointer = pointer.rstrip(' ')
+        self.__pointer = parseId(pointer)
         self.__tag = tag
         self.__value = value.strip()
 
