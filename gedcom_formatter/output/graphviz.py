@@ -13,6 +13,7 @@ class Graphviz():
         print('    engine = neato')
         print('    splines = line')
         print('    center = true')
+        #print('    rankdir = BT')
         print('    edge [dir = none, penwidth = 3.0]')
         print()
 
@@ -38,9 +39,10 @@ class Graphviz():
      
         for individual in self.__tree.getIndividuals():
             id = individual.getId()
-            gedcom = individual.getGedcom()
-            label = '{}\\n{}\\n{}'.format(gedcom.getCallname(), gedcom.getBirthname(), gedcom.getBirthdate())
-            print('    {id} [shape = doubleoctagon, label="{label}", penwidth=2.0];'.format(id = id, label = label))
+            label = self.__renderLabel(individual)
+            print('    {id} [shape = doubleoctagon,'.format(id = id)) 
+            print('          label={label},'.format(label = label)) 
+            print('          penwidth=2.0];')
 
             if individual.isChild():
                 print('    {id}Child [shape = circle, label="", height = 0.0, width = 0.0];'.format(id = id))
@@ -49,6 +51,24 @@ class Graphviz():
             print()
 
         print('}')
+
+    def __renderLabel(self, individual):
+        gedcom = individual.getGedcom()
+
+        label = '<<table border="0" cellborder="0">'
+
+        if individual.isMale():
+            imgSrc = './male.png'
+        else:
+            imgSrc = './female.png'
+
+        #label += '<tr><td><img src="%s"/></td></tr>' % imgSrc
+        label += '<tr><td>%s</td></tr>' % gedcom.getCallname()
+        label += '<tr><td>%s</td></tr>' % gedcom.getBirthname()
+        label += '<tr><td>%s</td></tr>' % gedcom.getBirthdate()
+        label += '</table>>'
+
+        return label
 
     def __renderFamily(self, family):
         id = family.getId()
