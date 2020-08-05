@@ -25,12 +25,14 @@ class GedcomIndividual():
         'BURI': 'burial'
     }
 
-    SKIP_TAGS = ['_UID', 'FAMS', 'FAMC', 'CHAN', 'OBJE']
+    SKIP_TAGS = ['_UID', 'FAMC', 'CHAN', 'OBJE']
 
     def __init__(self, raw):
         self.__id = raw.getPointer()
 
         self.__values = {}
+
+        self.__families = []
 
         for child in raw.getChildren():
             tag = child.getTag()
@@ -48,6 +50,8 @@ class GedcomIndividual():
                 prefix = GedcomIndividual.EVENT_TAGS[tag] + '_'
                 self.__values[prefix + 'date'] = parseDate(child)
                 self.__values[prefix + 'location'] = parseLocation(child)
+            elif tag == 'FAMS':
+                self.__families.append(parseId(child.getValue()))
             elif tag in GedcomIndividual.SKIP_TAGS:
                 continue
             else:
@@ -55,6 +59,9 @@ class GedcomIndividual():
 
     def getId(self):
         return self.__id
+
+    def getFamilies(self):
+        return self.__families
 
     def isMale(self):
         return 'gender' in self.__values and self.__values['gender'] == 'M'   
@@ -92,7 +99,7 @@ class GedcomIndividual():
             date = self.__values['birth_date']
             return '{:02d}.{:02d}.{}'.format(date[2], date[1], date[0])
 
-        return ''
+        return ' '
 
     def __str__(self):
         return '%s: %s' % (self.__id, self.__values)

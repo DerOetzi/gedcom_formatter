@@ -1,8 +1,10 @@
 from .gedcom.model import GedcomIndividual, GedcomFamily
 
 class Node():
-    def __init__(self, id):
+    def __init__(self, id, level):
         self._id = id
+        self._level = level
+
         self.__parent = None
         self._childs = []
         self.__prevSibling = None
@@ -10,6 +12,9 @@ class Node():
 
     def getId(self):
         return self._id
+
+    def getLevel(self):
+        return self._level
 
     def hasChilds(self):
         return len(self._childs) > 0
@@ -48,8 +53,8 @@ class Node():
         return self.__nextSibling
 
 class Individual(Node):
-    def __init__(self, gedcom: GedcomIndividual):
-        Node.__init__(self, gedcom.getId())
+    def __init__(self, gedcom: GedcomIndividual, level):
+        Node.__init__(self, gedcom.getId(), level)
         self.__gedcom = gedcom
         self.__families = {}
 
@@ -75,19 +80,28 @@ class Individual(Node):
         return self._id
 
 class Family(Node):
-    def __init__(self, gedcom: GedcomFamily):
-        Node.__init__(self, gedcom.getId())
+    def __init__(self, gedcom: GedcomFamily, level):
+        Node.__init__(self, gedcom.getId(), level)
         self.__gedcom = gedcom
         self.__partners = []
 
     def addPartners(self, partners):
+        revert = False
+
         for partner in partners:
+            gFamilies = partner.getGedcom().getFamilies()
+            if len(gFamilies) == 2 and gFamilies.index(self._id):
+                revert = True
+
             if partner.isMale():
                 self.__partners.insert(0, partner)
             else:
                 self.__partners.append(partner)
 
             partner.addFamily(self)
+
+        if revert:
+            self.__partners.reverse()
 
         prevPartner1 = self.__partners[1].getPrevSibling()
         if prevPartner1 is not None:
@@ -116,7 +130,6 @@ class Family(Node):
     def __str__(self):
         return '%s: %s %s' % (self._id, self.__partners, self._childs)
 
-
 class FamilyTree():
     def __init__(self, gedcom):
         self.__gedcom = gedcom
@@ -138,9 +151,9 @@ class FamilyTree():
 
         generation = self.__getGeneration(level)
 
-        family = Family(gFamily)
+        family = Family(gFamily, level)
 
-        partners = list(map(lambda x: self.__getIndividual(x), gFamily.getCouple()))
+        partners = list(map(lambda x: self.__getIndividual(x, level), gFamily.getCouple()))
         family.addPartners(partners)
 
         if generation.getPrevSibling() is None:
@@ -151,7 +164,7 @@ class FamilyTree():
         if depth <= 1:
             return family
 
-        childs = self.__addChildsToFamily(family, gFamily.getChildren())
+        childs = self.__addChildsToFamily(family, gFamily.getChildren(), level + 1)
         
         if len(childs) > 0:
             childGeneration = self.__getGeneration(level + 1)
@@ -161,21 +174,27 @@ class FamilyTree():
                 childGeneration.setNextSibling(childs[-1])
             else:
                 lastChild = childGeneration.getNextSibling()
-                childs[0].setPrevSibling(lastChild)
-                lastChild.setNextSibling(childs[0])
+                lastChildPartner = lastChild.getNextSibling()
+                if lastChildPartner is None:
+                    childs[0].setPrevSibling(lastChild)
+                    lastChild.setNextSibling(childs[0])
+                else:
+                    childs[0].setPrevSibling(lastChildPartner)
+                    lastChildPartner.setNextSibling(childs[0])
 
                 childGeneration.setNextSibling(childs[-1])
         
             for child in childs:
-                for familyChild in self.__gedcom.getFamilies():
-                    if familyChild.isCouple(child.getId()):
-                        self.__addFamily(familyChild, maxDepth, depth - 1)
+                families = child.getGedcom().getFamilies()
+                for familyId in families:
+                    familyChild = self.__gedcom.getFamily(familyId)
+                    self.__addFamily(familyChild, maxDepth, depth - 1)
 
         return family
 
     def __getGeneration(self, level):
         if level not in self.__generations:
-            generation = Node('G%d' % level)
+            generation = Node('G%d' % level, level)
             if level - 1 in self.__generations:
                 self.__generations[level - 1].addChild(generation)
             self.__generations[level] = generation
@@ -188,17 +207,17 @@ class FamilyTree():
     def getIndividuals(self):
         return self.__individuals.values()
 
-    def __getIndividual(self, id):
+    def __getIndividual(self, id, level):
         if id not in self.__individuals:
             gIndividual = self.__gedcom.getIndividual(id)
-            self.__individuals[id] = Individual(gIndividual)
+            self.__individuals[id] = Individual(gIndividual, level)
 
         return self.__individuals[id]
 
-    def __addChildsToFamily(self, family, gChildren):
+    def __addChildsToFamily(self, family, gChildren, level):
         childs = []
         for childId in gChildren:
-            childs.append(self.__getIndividual(childId))
+            childs.append(self.__getIndividual(childId, level))
         
         if len(childs) > 0:
             return family.addChilds(childs)
@@ -206,4 +225,4 @@ class FamilyTree():
         return []
 
     def __str__(self):
-        return 'Individuals: %d, generations: %s' % (len(self.__individuals), self.__generations)
+        return 'Individuals: %d, generations: %s' % (len(self.__individuals), len(self.__generations))
