@@ -25,7 +25,8 @@ class Graphviz():
                 generation.append(nextSibling.getId())
                 nextSibling = nextSibling.getNextSibling()
 
-            print('    {rank = same; %s [style = invis, len=10, weight=1];};' % ' -> '.join(generation))
+            if len(generation) > 1:
+                print('    {rank = same; %s [style = invis, len=10, weight=1];};' % ' -> '.join(generation))
 
             if nextGeneration.hasChilds():
                 nextGeneration = nextGeneration.getChilds()[0]
