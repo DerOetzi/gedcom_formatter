@@ -57,6 +57,8 @@ class Generation():
         self._id = 'G%d' % level 
         self.__level = level
 
+        self.__count = 0
+
         self.__first = None
         self.__last = None
 
@@ -70,10 +72,12 @@ class Generation():
         return self.__first is not None
 
     def append(self, individuals):
+        count = len(individuals)
         if self.isInitialized():
             firstIndividual = individuals[0]
             while firstIndividual.getPrevSibling() is not None:
                 firstIndividual = firstIndividual.getPrevSibling()
+                count += 1
 
             self.__last.setNextSibling(firstIndividual)
             firstIndividual.setPrevSibling(self.__last)
@@ -81,17 +85,25 @@ class Generation():
             lastIndividual = individuals[-1]
             while lastIndividual.getNextSibling() is not None:
                 lastIndividual = lastIndividual.getNextSibling()
+                count +=1
 
             self.__last = lastIndividual
-            
-
         else:
             self.__first = individuals[0]
             self.__last = individuals[-1]
 
+        self.__count += count
+
     def fixFirst(self):
         while self.__first.getPrevSibling() is not None:
             self.__first = self.__first.getPrevSibling()
+            self.__count += 1
+
+    def getCount(self):
+        return self.__count
+
+    def getFirst(self):
+        return self.__first
 
     def setPrevGeneration(self, generation):
         self.__prevGeneration = generation

@@ -1,56 +1,97 @@
-from math import ceil
-from ..tree import FamilyTree, Node
+from graphviz import Digraph
+from ..tree import FamilyTree
 
-class Graphviz():
+class Graphviz(object):
     def __init__(self, tree: FamilyTree):
         self.__tree = tree
-        self.__childsNodeLayers = {}
 
     def render(self):
-        self.__childsNodeLayers.clear()
+        g = Digraph(
+            name = 'family_tree', format = 'png', engine = 'dot',
+            graph_attr = {'splines': 'line', 'center': 'true', 'nodesep': '1.7', 'ranksep': '0.8'},
+            node_attr = {'shape': 'circle', 'height': '0.0', 'width': '0.0'},
+            edge_attr = {'dir': 'none', 'penwidth': '6.0'}
+        )
 
-        print('Digraph family_tree {')
-        print('    engine = neato')
-        print('    splines = line')
-        print('    center = true')
-        #print('    rankdir = BT')
-        print('    edge [dir = none, penwidth = 3.0]')
-        print()
+        rootFamily = self.__tree.getRootFamily()
+        g.attr(root = rootFamily.getId())
+        g.attr(center = 'true')
 
-        nextGeneration = self.__tree.getRootGeneration()
-        while nextGeneration is not None:
-            generation = list(map(lambda x: x.getId(), nextGeneration.getIndividuals()))
-            
-            if len(generation) > 1:
-                print('    {rank = same; %s [style = invis];};' % ' -> '.join(generation))
+        curGeneration = self.__tree.getRootGeneration()
+        while curGeneration is not None:
+            with g.subgraph(name = curGeneration.getId()) as gen:
+                gen.attr(rank = 'same')
 
-            nextGeneration = nextGeneration.getNextGeneration()
+                curInd = curGeneration.getFirst()
+                nextInd = curInd.getNextSibling()
+                while nextInd is not None:
+                    gen.edge(
+                        curInd.getId(), nextInd.getId(), 
+                        label = None, style = 'invis'
+                    )
+                    curInd = nextInd
+                    nextInd = nextInd.getNextSibling()
+        
+            curGeneration = curGeneration.getNextGeneration()
 
-            print()
+        self.__renderFamily(rootFamily, g)
 
-        family = self.__tree.getRootFamily()
-        self.__renderFamily(family)
-     
         for individual in self.__tree.getIndividuals():
             id = individual.getId()
-            label = self.__renderLabel(individual)
-            print('    {id} [shape = doubleoctagon,'.format(id = id)) 
-            print('          label={label},'.format(label = label))
-            print('          width=3.5, height=1.5,') 
-            print('          penwidth=2.0, style = filled, fillcolor = antiquewhite];')
+            g.node(
+                id, label = self.__renderLabel(individual), shape = 'none',
+                image = './shield.png', width = '3.1', height = '3.1'
+              #  shape = 'doubleoctagon', width = '3.5', height = '1.5',
+              #  penwidth = '2.0', style = 'filled', fillcolor = 'lightgrey:antiquewhite',
+              #  gradientangle = '135'
+            )
 
             if individual.isChild():
-                print('    {id}Child [shape = circle, label="", height = 0.0, width = 0.0];'.format(id = id))
-                print('    {id}Child -> {id} [len = 0.25, weight=10];'.format(id = id))
-            
-            print()
+                g.node('%sChild' % id, label = '')
 
-        print('}')
+                g.edge('%sChild' % id, id, label = None, weight = '10')
+
+        g.render()
+
+    def __renderFamily(self, family, graph):
+        id = family.getId()
+        partners = family.getPartners()
+        with graph.subgraph(name = 'Family%s' % id) as f:
+            with f.subgraph(name = 'Partners%s' % id) as p:
+                p.attr(rank = 'same')
+                
+                p.node(id, label = '')    
+
+                p.edge(partners[0].getId(), id, label = None, weight = '10')
+                p.edge(id, partners[1].getId(), label = None, weight = '10')
+                    
+            if family.hasChilds():
+                childs = family.getChilds()
+                childsIds = list(map(lambda x: x.getId(), childs))
+
+                childNode = '%sChilds' % id
+
+                with f.subgraph(name = 'Childs%s' % id) as c:
+                    c.attr(rank = 'same')
+                    for childId in childsIds:
+                        c.node(childId)
+
+                f.node(childNode, label = '')
+
+                f.edge(id, childNode, label = None, weight = '10')
+
+                for child in childs:
+                    f.edge(
+                        childNode, '%sChild' % child.getId(), label = None, weight = '2'
+                    )
+
+                    for childFamily in child.getFamilies():
+                        self.__renderFamily(childFamily, f)
 
     def __renderLabel(self, individual):
         gedcom = individual.getGedcom()
 
-        label = '<<table border="0" cellborder="0">'
+        label = '<<table border="0" cellborder="0" cellpadding="1">'
 
         if individual.isMale():
             imgSrc = './male.png'
@@ -64,31 +105,3 @@ class Graphviz():
         label += '</table>>'
 
         return label
-
-    def __renderFamily(self, family):
-        id = family.getId()
-        partners = family.getPartners()
-        print('    subgraph Family%s {' % id) 
-        print('    {rank = same; %s -> %s -> %s [len = 0.5, weight=10];};' % (partners[0].getId(), id, partners[1].getId()))
-        print('    {id} [shape = circle, label = "", height = 0.0, width = 0.0];'.format(id = id))
-
-        if family.hasChilds():
-            childs = family.getChilds()
-            childsIds = list(map(lambda x: x.getId(), childs))
-
-            childNode = '%sChilds' % id                
-
-            print('    {rank=same; %s;}' % ('; '.join(childsIds)))
-            print('    {} -> {} [len = 0.5, weight = 10];'.format(id, childNode))
-            print('    {} [shape = circle, label = "", height = 0.0, width = 0.0];'.format(childNode))
-
-            print()
-
-            for child in childs:
-                print('    {} -> {} [len = 2, weight = 6];'.format(childNode, child.getId() + 'Child'))
-
-                for childFamily in child.getFamilies():
-                    self.__renderFamily(childFamily)
-
-        print('}')
-        print()
