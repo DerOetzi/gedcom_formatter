@@ -52,6 +52,67 @@ class Node():
     def getNextSibling(self):
         return self.__nextSibling
 
+class Generation():
+    def __init__(self, level):
+        self._id = 'G%d' % level 
+        self.__level = level
+
+        self.__first = None
+        self.__last = None
+
+        self.__prevGeneration = None
+        self.__nextGeneration = None
+
+    def getId(self):
+        return self._id
+
+    def isInitialized(self):
+        return self.__first is not None
+
+    def append(self, individuals):
+        if self.isInitialized():
+            firstIndividual = individuals[0]
+            while firstIndividual.getPrevSibling() is not None:
+                firstIndividual = firstIndividual.getPrevSibling()
+
+            self.__last.setNextSibling(firstIndividual)
+            firstIndividual.setPrevSibling(self.__last)
+
+            lastIndividual = individuals[-1]
+            while lastIndividual.getNextSibling() is not None:
+                lastIndividual = lastIndividual.getNextSibling()
+
+            self.__last = lastIndividual
+            
+
+        else:
+            self.__first = individuals[0]
+            self.__last = individuals[-1]
+
+    def fixFirst(self):
+        while self.__first.getPrevSibling() is not None:
+            self.__first = self.__first.getPrevSibling()
+
+    def setPrevGeneration(self, generation):
+        self.__prevGeneration = generation
+
+    def addNextGeneration(self, generation):
+        self.__nextGeneration = generation
+        generation.setPrevGeneration(self)
+
+    def getNextGeneration(self):
+        return self.__nextGeneration
+
+    def getIndividuals(self):
+        individuals = []
+
+        current = self.__first
+        while current is not None:
+            individuals.append(current)
+            current = current.getNextSibling()
+
+        return individuals
+
 class Individual(Node):
     def __init__(self, gedcom: GedcomIndividual, level):
         Node.__init__(self, gedcom.getId(), level)
@@ -149,17 +210,15 @@ class FamilyTree():
 
         level = maxDepth - depth
 
-        generation = self.__getGeneration(level)
-
         family = Family(gFamily, level)
 
         partners = list(map(lambda x: self.__getIndividual(x, level), gFamily.getCouple()))
         family.addPartners(partners)
 
-        if generation.getPrevSibling() is None:
+        generation = self.__getGeneration(level)
+        if not generation.isInitialized():
             partners = family.getPartners()
-            generation.setPrevSibling(partners[0])
-            generation.setNextSibling(partners[1])
+            generation.append(partners)
 
         if depth <= 1:
             return family
@@ -168,35 +227,23 @@ class FamilyTree():
         
         if len(childs) > 0:
             childGeneration = self.__getGeneration(level + 1)
+            childGeneration.append(childs)
 
-            if childGeneration.getPrevSibling() is None:
-                childGeneration.setPrevSibling(childs[0])
-                childGeneration.setNextSibling(childs[-1])
-            else:
-                lastChild = childGeneration.getNextSibling()
-                lastChildPartner = lastChild.getNextSibling()
-                if lastChildPartner is None:
-                    childs[0].setPrevSibling(lastChild)
-                    lastChild.setNextSibling(childs[0])
-                else:
-                    childs[0].setPrevSibling(lastChildPartner)
-                    lastChildPartner.setNextSibling(childs[0])
-
-                childGeneration.setNextSibling(childs[-1])
-        
             for child in childs:
                 families = child.getGedcom().getFamilies()
                 for familyId in families:
                     familyChild = self.__gedcom.getFamily(familyId)
                     self.__addFamily(familyChild, maxDepth, depth - 1)
 
+            childGeneration.fixFirst()
+
         return family
 
     def __getGeneration(self, level):
         if level not in self.__generations:
-            generation = Node('G%d' % level, level)
+            generation = Generation(level)
             if level - 1 in self.__generations:
-                self.__generations[level - 1].addChild(generation)
+                self.__generations[level - 1].addNextGeneration(generation)
             self.__generations[level] = generation
         
         return self.__generations[level]

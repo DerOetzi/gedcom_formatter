@@ -99,7 +99,7 @@ class GedcomIndividual():
             date = self.__values['birth_date']
             return '{:02d}.{:02d}.{}'.format(date[2], date[1], date[0])
 
-        return ' '
+        return None
 
     def __str__(self):
         return '%s: %s' % (self.__id, self.__values)
