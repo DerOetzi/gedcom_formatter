@@ -101,7 +101,7 @@ class Graphviz(object):
         label += '<tr><td><img src="%s"/></td></tr>' % imgSrc
         label += '<tr><td>%s</td></tr>' % gedcom.getCallname()
         label += '<tr><td>%s</td></tr>' % gedcom.getBirthname()
-        label += '<tr><td>%s</td></tr>' % gedcom.getBirthdate()
+        label += '<tr><td>%s</td></tr>' % gedcom.getBirthdateFormatted()
         label += '</table>>'
 
         return label

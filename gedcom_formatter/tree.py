@@ -1,6 +1,6 @@
-from .gedcom.model import GedcomIndividual, GedcomFamily
+from .gedcom import GedcomIndividual, GedcomFamily
 
-class Node():
+class Node(object):
     def __init__(self, id, level):
         self._id = id
         self._level = level
@@ -147,7 +147,7 @@ class Individual(Node):
         return self.__gedcom.isMale()
 
     def getBirthYear(self):
-        return self.__gedcom.getBirthYear()
+        return self.__gedcom.getBirthyear()
 
     def __str__(self):
         return self._id

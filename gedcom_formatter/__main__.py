@@ -1,5 +1,5 @@
 import click
-from gedcom_formatter.gedcom.model import Gedcom
+from gedcom_formatter.gedcom import Gedcom
 from gedcom_formatter.tree import FamilyTree
 from gedcom_formatter.output.graphviz import Graphviz
 
