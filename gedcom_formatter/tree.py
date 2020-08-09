@@ -155,8 +155,11 @@ class Individual(Node):
 class Family(Node):
     def __init__(self, gedcom: GedcomFamily, level):
         Node.__init__(self, gedcom.getId(), level)
-        self.__gedcom = gedcom
+        self.__info = gedcom
         self.__partners = []
+
+    def getInfo(self):
+        return self.__info
 
     def addPartners(self, partners):
         revert = False

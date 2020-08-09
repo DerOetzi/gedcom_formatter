@@ -1,3 +1,5 @@
+import os
+
 from graphviz import Digraph
 from ..tree import FamilyTree
 
@@ -7,10 +9,10 @@ class Graphviz(object):
 
     def render(self):
         g = Digraph(
-            name = 'family_tree', format = 'png', engine = 'dot',
-            graph_attr = {'splines': 'line', 'center': 'true', 'nodesep': '1.7', 'ranksep': '0.8'},
+            name = 'family_tree', format = 'svg', engine = 'dot',
+            graph_attr = {'splines': 'line', 'center': 'true', 'nodesep': '1.0', 'ranksep': '3.2'},
             node_attr = {'shape': 'circle', 'height': '0.0', 'width': '0.0'},
-            edge_attr = {'dir': 'none', 'penwidth': '6.0'}
+            edge_attr = {'dir': 'none', 'penwidth': '30.0'}
         )
 
         rootFamily = self.__tree.getRootFamily()
@@ -25,10 +27,20 @@ class Graphviz(object):
                 curInd = curGeneration.getFirst()
                 nextInd = curInd.getNextSibling()
                 while nextInd is not None:
+                    betweenNode = '%sBetween%s' % (curInd.getId(), nextInd.getId())
+
+                    gen.node(betweenNode, label = '', style = 'invis')
+
                     gen.edge(
-                        curInd.getId(), nextInd.getId(), 
+                        curInd.getId(), betweenNode, 
                         label = None, style = 'invis'
                     )
+
+                    gen.edge(
+                        betweenNode, nextInd.getId(), 
+                        label = None, style = 'invis'
+                    )
+
                     curInd = nextInd
                     nextInd = nextInd.getNextSibling()
         
@@ -39,11 +51,11 @@ class Graphviz(object):
         for individual in self.__tree.getIndividuals():
             id = individual.getId()
             g.node(
-                id, label = self.__renderLabel(individual), shape = 'none',
-                image = './shield.png', width = '3.1', height = '3.1'
-              #  shape = 'doubleoctagon', width = '3.5', height = '1.5',
-              #  penwidth = '2.0', style = 'filled', fillcolor = 'lightgrey:antiquewhite',
-              #  gradientangle = '135'
+                id, label = self.__renderLabel(individual), 
+                shape = 'invhouse', width = '10', height = '25',
+                penwidth = '2.0', style = 'filled', fillcolor = 'lightgrey:antiquewhite',
+                gradientangle = '135'
+                #image = './shield2.png', width = '10', height = '10', align = 'center'
             )
 
             if individual.isChild():
@@ -51,7 +63,7 @@ class Graphviz(object):
 
                 g.edge('%sChild' % id, id, label = None, weight = '10')
 
-        g.render()
+        g.save()
 
     def __renderFamily(self, family, graph):
         id = family.getId()
@@ -91,17 +103,39 @@ class Graphviz(object):
     def __renderLabel(self, individual):
         gedcom = individual.getGedcom()
 
-        label = '<<table border="0" cellborder="0" cellpadding="1">'
+        label = '<<table border="0" cellborder="0" cellpadding="0" align="center">'
 
-        if individual.isMale():
-            imgSrc = './male.png'
+        if gedcom.isFile():
+            imgSrc = os.path.realpath('./Media/%s' % gedcom.getFile())
         else:
-            imgSrc = './female.png'
+            if individual.isMale():
+                imgSrc = './male.png'
+            else:
+                imgSrc = './female.png'
 
-        label += '<tr><td><img src="%s"/></td></tr>' % imgSrc
-        label += '<tr><td>%s</td></tr>' % gedcom.getCallname()
-        label += '<tr><td>%s</td></tr>' % gedcom.getBirthname()
-        label += '<tr><td>%s</td></tr>' % gedcom.getBirthdateFormatted()
+        callname = gedcom.getCallname()
+        if len(callname) > 10:
+            callnameSize = 92
+        elif len(callname) > 8:
+            callnameSize = 104
+        else:
+            callnameSize = 128
+
+        birthdate = ''
+        if gedcom.isBirthdate():
+            birthdate = '&#x2733; ' + gedcom.getBirthdateFormatted()
+        
+        deathdate = ''
+        if gedcom.isDeathdate():
+            deathdate = '&#x271D; ' + gedcom.getDeathdateFormatted()
+
+        label += '<tr><td><img src="%s" scale="TRUE"/></td></tr>' % imgSrc
+        label += '<tr><td> </td></tr>'
+        label += '<tr><td><FONT POINT-SIZE="%d" FACE="Parisienne">%s</FONT></td></tr>' % (callnameSize, callname)
+        label += '<tr><td><FONT POINT-SIZE="80" FACE="Parisienne">%s</FONT></td></tr>' % gedcom.getBirthname()
+        label += '<tr><td> </td></tr>'
+        label += '<tr><td><FONT POINT-SIZE="64" FACE="Sacramento">%s </FONT></td></tr>' % birthdate
+        label += '<tr><td><FONT POINT-SIZE="64" FACE="Sacramento">%s </FONT></td></tr>' % deathdate
         label += '</table>>'
 
         return label

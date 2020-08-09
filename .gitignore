@@ -1,4 +1,7 @@
 *.ged
 *.pyc
 *.png
+*.svg
+*.gv
 *.git
+Media/*

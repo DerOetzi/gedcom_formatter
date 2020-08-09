@@ -1,4 +1,5 @@
 import re as regex
+import os
 
 class GedcomElement:
     def __init__(self, id, event_tags):
@@ -116,10 +117,11 @@ class GedcomIndividual(GedcomElement):
         'BIRT': 'birth',
         'CHR': 'baptism',
         'DEAT': 'death',
-        'BURI': 'burial'
+        'BURI': 'burial',
+        'CONF': 'confirmation'
     }
 
-    SKIP_TAGS = ['_UID', 'FAMC', 'CHAN', 'OBJE']
+    SKIP_TAGS = ['_UID', 'FAMC', 'CHAN']
 
     def __init__(self, raw):
         GedcomElement.__init__(self, raw.getPointer(), GedcomIndividual.EVENT_TAGS)
@@ -142,6 +144,13 @@ class GedcomIndividual(GedcomElement):
                 self._parseEvent(GedcomIndividual.EVENT_TAGS[tag], child)
             elif tag == 'FAMS':
                 self.__families.append(self._parseId(child.getValue()))
+            elif tag == 'OBJE':
+                if 'file' in self._values:
+                    continue
+
+                file = child.getChildByTag('FILE')
+                filename = file.getValue().replace('C:\\', '').replace('\\', '/')
+                self._values['file'] = os.path.basename(filename)
             elif tag in GedcomIndividual.SKIP_TAGS:
                 continue
             else:
@@ -217,6 +226,12 @@ class GedcomIndividual(GedcomElement):
 
     def getDeathdateFormatted(self):
         return self._getDateFormattedOrEmpty('death')
+
+    def isFile(self):
+        return self._keyExists('file')
+
+    def getFile(self):
+        return self._getValueOrEmptyString('file')
 
     def __str__(self):
         return '%s: %s' % (self._id, self._values)
